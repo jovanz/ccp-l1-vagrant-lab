@@ -1,0 +1,16 @@
+#################################################
+# Playbooks: Kubernetes Install
+#################################################
+---
+- hosts: nodes
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Join the Worker nodes to the cluster.
+      command: sh /vagrant/kubernetes_join_command
+      register: joined_or_not
+
+    - name: Remove kubernetes join command from file
+      ansible.builtin.file:
+        path: /vagrant/kubernetes_join_command
+        state: absent

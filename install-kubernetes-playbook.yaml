@@ -1,0 +1,105 @@
+#################################################
+# Playbooks: Kubernetes Install
+#################################################
+---
+- hosts: control,nodes
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Remove swapfile from /etc/fstab
+      mount:
+        name: swap
+        fstype: swap
+        state: absent
+
+    - name: Disable SWAP since kubernetes can't work with swap enabled
+      ansible.builtin.shell: swapoff -a
+
+    - name: Copy kernel modules config file k8s-modules.conf to /etc/modules-load.d
+      copy:
+        src: "{{ playbook_dir }}/k8s-modules.conf"
+        dest: "/etc/modules-load.d/k8s-modules.conf"
+
+    - name: Copy kernel modules config file containerd.conf to /etc/modules-load.d
+      copy:
+        src: "{{ playbook_dir }}/containerd.conf"
+        dest: "/etc/modules-load.d/containerd.conf"
+
+    - name: Copy sysctl config file  to /etc/sysctl.d
+      copy:
+        src: "{{ playbook_dir }}/k8s-sysctl.conf"
+        dest: "/etc/sysctl.d/k8s-sysctl.conf"
+
+    - name: Copy sysctl config file to /etc/sysctl.d
+      copy:
+        src: "{{ playbook_dir }}/99-kubernetes-cri.conf"
+        dest: "/etc/sysctl.d/99-kubernetes-cri.conf"
+
+      # Set ip forwarding on in /proc and verify token value with the sysctl command
+    - name: Reload sysctl k8s-sysctl.conf config file
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        sysctl_set: yes
+        reload: yes
+
+    - name: Restart service systemd-modules-load, in all cases
+      ansible.builtin.systemd:
+        name: systemd-modules-load.service
+        daemon_reload: yes
+        state: restarted
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Google Cloud public GPG apt Key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+
+    - name: Add Kubernetes Repository
+      apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+
+    - name: Update and install containerd.io, kubelet, kubeadm and kubectl packages
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: [ 'aptitude', 'apt-transport-https', 'ca-certificates', 'curl', 'containerd.io', 'kubelet', 'kubeadm', 'kubectl' ]
+
+    - name: Ensures /etc/containerd dir exists
+      file:
+        path: /etc/containerd
+        state: directory
+        mode: 0755
+
+    - name: Copy containerd config file
+      copy:
+        src: "{{ playbook_dir }}/config.toml"
+        dest: "/etc/containerd/config.toml"
+
+    - name: Restart service containerd
+      ansible.builtin.systemd:
+        state: restarted
+        daemon_reload: yes
+        name: containerd
+
+    - name: Configure node-ip {{ ansible_host }} at kubelet
+      lineinfile:
+        path: '/etc/systemd/system/kubelet.service.d/10-kubeadm.conf'
+        line: 'Environment="KUBELET_EXTRA_ARGS=--node-ip={{ ansible_host }}"'
+        regexp: 'KUBELET_EXTRA_ARGS='
+        insertafter: '\[Service\]'
+        state: present
+
+    - name: Restart service kubelet
+      ansible.builtin.systemd:
+        state: restarted
+        daemon_reload: yes
+        name: kubelet
