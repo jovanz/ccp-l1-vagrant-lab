@@ -4,21 +4,21 @@
 servers=[
   {
     :hostname => "k8s-master",
-    :ip => "198.19.0.2",
+    :ip => "192.168.50.4",
     :box => "ubuntu/bionic64",
     :ram => 2048,
     :cpu => 2
   },
   {
     :hostname => "k8s-worker-1",
-    :ip => "198.19.0.3",
+    :ip => "192.168.50.5",
     :box => "ubuntu/bionic64",
     :ram => 1024,
     :cpu => 1
   },
   {
     :hostname => "k8s-worker-2",
-    :ip => "198.19.0.4",
+    :ip => "192.168.50.6",
     :box => "ubuntu/bionic64",
     :ram => 1024,
     :cpu => 1
