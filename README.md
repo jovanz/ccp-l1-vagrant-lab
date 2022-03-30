@@ -28,7 +28,7 @@ This is entry point for CCO-L1 lab.
 
 We will be using the Tigera Operator to install and configure Calico.
 ```bash
-wget https://docs.projectcalico.org/archive/v3.20/manifests/tigera-operator.yaml
+wget https://docs.projectcalico.org/archive/v3.22/manifests/tigera-operator.yaml
 kubectl create -f tigera-operator.yaml
 ```
 and after this run:
@@ -42,7 +42,7 @@ spec:
   calicoNetwork:
     containerIPForwarding: Enabled
     ipPools:
-    - cidr: 198.19.16.0/21
+    - cidr: 192.168.56.0/21
       natOutgoing: Enabled
       encapsulation: None
 EOF
